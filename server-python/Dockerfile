@@ -9,9 +9,13 @@
 # resolves the widget at ../client/fcaptcha.js relative to its own directory, so
 # keeping server-python/ and client/ as siblings means it works with no
 # configuration, exactly as it does from a checkout.
-FROM python:3.15.0-slim@sha256:f5b92f2a669a4c347044f29367f31983280b648250ca94dea66f98c53bc87e58
+FROM dhi.io/python:3.15-alpine-dev AS build-stage
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/venv/bin:$PATH"
 
 WORKDIR /app/server-python
+RUN python -m venv /app/venv
 
 COPY server-python/requirements.lock .
 RUN pip install --no-cache-dir --require-hashes -r requirements.lock
@@ -22,6 +26,14 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 # review makes visible and which the previous instruction here did not prevent.
 COPY server-python/*.py ./
 RUN rm -f test_*.py
+
+FROM dhi.io/python:3.15-alpine
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/venv/bin:$PATH"
+
+WORKDIR /app/server-python
+COPY --from=build-stage /app/venv /app/venv
+COPY --from=build-stage /app/server-python /app/server-python
 
 # Sibling of server-python/, so ../client/fcaptcha.js resolves.
 COPY client/fcaptcha.js /app/client/fcaptcha.js
