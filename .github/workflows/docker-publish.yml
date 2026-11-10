@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 env:
-  IMAGE_NAME: webdecoy/fcaptcha
+  IMAGE_NAME: firstdotorg/fcaptcha
 
 jobs:
   build-and-push:
