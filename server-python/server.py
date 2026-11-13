@@ -52,7 +52,7 @@ from config import signing_secret_from_env
 
 # Keep in sync with server-node/package.json on release. Enforced by
 # server-node/version.test.js, which lists every file carrying the version.
-app = FastAPI(title="FCaptcha", version="1.48.0")
+app = FastAPI(title="FCaptcha", version="1.50.0")
 
 MAX_REQUEST_BODY_BYTES = 64 * 1024
 
@@ -977,13 +977,9 @@ def detect_vision_ai(signals: Dict) -> List[Detection]:
             "Mouse path to target is unnaturally direct"
         ))
 
-    # Click precision
-    precision = b.get("clickPrecision", 10)
-    if 0 < precision < 2:
-        detections.append(Detection(
-            ThreatCategory.VISION_AI, 0.4, 0.5,
-            "Click precision is unnaturally accurate"
-        ))
+    # Click precision is intentionally not scored on its own. A paired real
+    # trackpad control landed 1.62px from center, inside the former threshold;
+    # precise clicks are ordinary human input without independent corroboration.
 
     # Exploration. Click-derived, so widget-only.
     exploration = b.get("explorationRatio", 0.3)

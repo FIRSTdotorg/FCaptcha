@@ -26,6 +26,8 @@ node capture/record.js
 node run-bench.js                     # human FPR, agent TPR, per-signal budgets
 node run-bench.js --gate              # non-zero exit when a signal is over budget
 node run-bench.js --json out.json     # machine-readable
+node tools/analyze-paired-observations.js
+                                      # rank paired agent/control differences
 
 On macOS, run the server and the harness under `caffeinate -i -s` for anything
 unattended. Maintenance Sleep pauses both processes together; a challenge
@@ -64,6 +66,36 @@ every rate for that reason.
 Headline rates and per-signal false-positive gates are computed from `captured`
 + `derived` only. Self-reported and synthetic samples are replayed and shown,
 never folded into a false-positive figure or gate.
+
+### Paired observation analysis
+
+`node tools/analyze-paired-observations.js` compares the captured
+`browser-internal` cohort with its `browser-internal-control` partners. Pairing
+uses capture mode plus the numeric sample index, so missing or duplicated
+partners fail loudly instead of being silently compared with the wrong run.
+
+The analyzer flattens scalar signal fields and summarizes numeric arrays by
+count, mean, minimum, maximum and standard deviation. It excludes operational
+metadata, identifiers, hashes, tokens and timestamps. A numeric candidate is
+ranked against every captured human sample using a strict zero-false-positive
+threshold. Categorical candidates must repeat; unique per-request values cannot
+be unioned into a fake separator. A **promotion candidate** must catch every
+paired agent, keep one direction in every pair, produce zero captured-human
+false positives and survive leave-one-pair-out evaluation. Even then it is a
+research candidate, not authorization to enforce: an independent environment
+must reproduce it first.
+
+Write the complete machine-readable result when reviewing or attaching a run:
+
+```bash
+node tools/analyze-paired-observations.js \
+  --json test-results/paired-observations.json \
+  --top 20
+```
+
+Derived and self-reported samples never participate. The report also prints the
+largest distribution shifts separately, because an interesting paired change
+can still overlap humans and be unsafe as a detector.
 
 **The human panel's environment is partly reconstructed.** This is the harness's
 sharpest limitation and it is structural: the only way to produce repeatable real
@@ -304,12 +336,15 @@ bench/
     BROWSER_INTERNAL.md   driver-free paired browser-internal capture protocol
   lib/
     corpus.js             sample schema, provenance rules, jitter
+    paired-analysis.js    paired flattening, screening, leave-one-out checks
     pow.js                browser-paced proof-of-work client
     replay.js             per-sample client IPs, bounded concurrency
     metrics.js            per-persona FPR, per-class TPR, per-signal budgets
     report.js             terminal rendering
     rng.js                seeded PRNG — same seed, same corpus
   tools/
+    analyze-paired-observations.js
+                            ranks repeatable agent/control differences
     compare-aggregation.js  score-composition schemes measured side by side
     import-browser-internal-capture.js
                             validates and imports driver-free agent captures
@@ -426,18 +461,28 @@ Two results worth recording because they changed the design:
   250ms. That conjunction is intentionally narrow: waiting at least 250ms
   evades it, and broadening it without new evidence would risk real DevTools
   users.
-- **`browser-internal` has one measured pair, not a detector.** A driver-free
-  Chrome Auto Browse widget capture scored 0.030; its same-browser, same-profile
-  manual control scored 0.045. Both produced valid tokens and stayed below the
-  human threshold. Their pointer streams overlap on the current candidate
-  features: micro-tremor 1.0 in both, empty-coalescing ratio 90.5% vs 89.7%, and
-  zero-coalescing ratio 25.8% vs 25.3% (agent vs control). This first observation
-  is evidence that the class exists in the corpus, so the synthetic no-data
-  marker is gone. It is not evidence of a population rate or a safe separating
-  signal. Four more widget pairs and five invisible pairs remain before any
-  enforcement proposal; no regression floor is set from one pair.
+- **`browser-internal` has ten measured pairs, not a detector.** Five driver-free
+  Chrome Auto Browse widget captures scored 0.000–0.030; their same-browser,
+  same-profile manual controls scored 0.000–0.045. Five invisible captures
+  scored 0.000–0.016; all five paired controls scored 0.000. Every capture
+  produced a valid token, was allowed, and stayed below the human threshold.
+  The agent and control distributions overlap on the current behavioral and
+  environment features. One agent run scrolled much more than its control, but
+  the pattern did not repeat and heavy scrolling is ordinary human behavior.
+  This cohort establishes that the class exists in the corpus and documents a
+  current detection limit. It is not evidence of a population rate or a safe
+  separating signal, so no browser-internal regression floor or production
+  enforcement is set from it.
 
-  The paired control also invalidated the standalone “First interaction too
+  Expanding the cohort also exposed two false-positive paths. The replayer had
+  treated every corpus entry as `/api/verify`; it now retains and replays the
+  reviewed capture endpoint so invisible samples stay on `/api/score`. A real
+  trackpad control also clicked 1.62px from target center, inside the former
+  standalone “unnaturally accurate” threshold. That weak click-precision signal
+  was removed from all three servers because precise human clicks require no
+  automation and the signal had no independent corroboration.
+
+  The first paired control also invalidated the standalone “First interaction too
   soon after page load” heuristic: the person moved at 30.7ms while Auto Browse
   first interacted at 244.7ms. That signal separated in the wrong direction and
   was removed from all three servers. Contextual form timing checks and the

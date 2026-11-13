@@ -7,14 +7,14 @@
 **Open source CAPTCHA that blocks bots, vision AI agents, and automation - with a single click or less.**
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Go](https://img.shields.io/badge/Go-1.26.10+-00ADD8?logo=go)
+![Go](https://img.shields.io/badge/Go-1.26.11+-00ADD8?logo=go)
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python)
 ![Node](https://img.shields.io/badge/Node-22+-339933?logo=node.js)
 [![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker)](https://github.com/WebDecoy/FCaptcha/pkgs/container/fcaptcha)
 [![Go Reference](https://pkg.go.dev/badge/github.com/WebDecoy/FCaptcha.svg)](https://pkg.go.dev/github.com/WebDecoy/FCaptcha)
 [![codecov](https://codecov.io/gh/WebDecoy/FCaptcha/graph/badge.svg)](https://app.codecov.io/gh/WebDecoy/FCaptcha)
 
-**[Try the Live Demo](https://webdecoy.com/product/fcaptcha-demo/)**
+**[Try the Live Demo](https://webdecoy.com/product/fcaptcha-demo/)** · [Product overview](https://webdecoy.com/product/fcaptcha/)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/WebDecoy/FCaptcha)
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template?referralCode=webdecoy&template=https://github.com/WebDecoy/FCaptcha)
@@ -31,6 +31,12 @@ docker run -d -p 127.0.0.1:3000:3000 -e FCAPTCHA_SECRET ghcr.io/webdecoy/fcaptch
 ```
 
 The demo page is now at `http://localhost:3000/demo/`.
+
+The same page is hosted at
+[`https://webdecoy.com/product/fcaptcha-demo/`](https://webdecoy.com/product/fcaptcha-demo/).
+Its optional detection-research contribution is off by default and requires an
+explicit opt-in on every page load. Form values are not sent to FCaptcha or
+retained with research samples.
 
 **2. Add the widget to a form**
 
@@ -148,7 +154,7 @@ is in `fcaptcha_score` there.
 
 ### Docker (recommended)
 
-A **prebuilt public image** is available at [`ghcr.io/webdecoy/fcaptcha`](https://github.com/WebDecoy/FCaptcha/pkgs/container/fcaptcha) for **Linux AMD64 and ARM64**. No GitHub login or source build is required. Use `:latest` to try the current image, or pin a release tag (for example, `:1.48.0`) or digest for reproducible deployments.
+A **prebuilt public image** is available at [`ghcr.io/webdecoy/fcaptcha`](https://github.com/WebDecoy/FCaptcha/pkgs/container/fcaptcha) for **Linux AMD64 and ARM64**. No GitHub login or source build is required. Use `:latest` to try the current image, or pin a release tag (for example, `:1.50.0`) or digest for reproducible deployments.
 
 See the [Docker guide](docker/README.md) for local startup, Compose, version pinning, and upgrades.
 
@@ -248,7 +254,7 @@ Two options, and the tradeoff is real:
 
 <!-- CDN widget: still requires a running FCaptcha API. -->
 <script
-  src="https://cdn.jsdelivr.net/npm/@webdecoy/fcaptcha-client@1.48.0/dist/fcaptcha.min.js"
+  src="https://cdn.jsdelivr.net/npm/@webdecoy/fcaptcha-client@1.50.0/dist/fcaptcha.min.js"
   integrity="sha384-…"
   crossorigin="anonymous"></script>
 ```
@@ -368,82 +374,36 @@ release listeners, sensors, timers, and workers. Invisible sessions expose
 </script>
 ```
 
-**React (no library required)**
+**React**
 
-The widget exposes a global API, so a small hook is all you need — no wrapper package to install or maintain.
+The official React 18/19 wrapper lives in [`packages/react`](packages/react).
+
+```bash
+npm install @webdecoy/fcaptcha-react
+```
 
 ```jsx
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { FCaptcha } from '@webdecoy/fcaptcha-react';
 
-function useFCaptcha({ serverUrl, siteKey }) {
-  const [ready, setReady] = useState(typeof window !== 'undefined' && !!window.FCaptcha);
-
-  useEffect(() => {
-    if (window.FCaptcha) {
-      window.FCaptcha.configure({ serverUrl });
-      setReady(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = `${serverUrl}/fcaptcha.js`;
-    script.async = true;
-    script.onload = () => {
-      window.FCaptcha.configure({ serverUrl });
-      setReady(true);
-    };
-    document.head.appendChild(script);
-    return () => { script.remove(); };
-  }, [serverUrl]);
-
-  const execute = useCallback(
-    (action) => window.FCaptcha.execute(siteKey, { action }),
-    [siteKey]
-  );
-
-  return { ready, execute };
-}
-
-// Invisible mode — get a token at submit time
-function LoginForm() {
-  const { ready, execute } = useFCaptcha({
-    serverUrl: 'https://your-server.com',
-    siteKey: 'your-site-key',
-  });
-
-  async function onSubmit(e) {
-    e.preventDefault();
-    const { token } = await execute('login');
-    await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: e.target.email.value, fcaptchaToken: token }),
-    });
-  }
-
+function ContactProtection() {
   return (
-    <form onSubmit={onSubmit}>
-      <input name="email" type="email" required />
-      <button disabled={!ready}>Sign in</button>
-    </form>
+    <FCaptcha
+      siteKey="contact-form"
+      serverUrl="https://captcha.example.com"
+      scriptSrc="https://captcha.example.com/fcaptcha.js"
+      onVerify={(token) => sendTokenToYourBackend(token)}
+    />
   );
-}
-
-// Checkbox mode — render the interactive widget
-function FCaptchaCheckbox({ siteKey, serverUrl, onVerify }) {
-  const ref = useRef(null);
-  const { ready } = useFCaptcha({ serverUrl, siteKey });
-
-  useEffect(() => {
-    if (!ready || !ref.current) return;
-    const widgetId = window.FCaptcha.render(ref.current, { siteKey, callback: onVerify });
-    return () => window.FCaptcha.destroy(widgetId);
-  }, [ready, siteKey, onVerify]);
-
-  return <div ref={ref} />;
 }
 ```
 
-The same pattern works in Vue, Svelte, Solid, and Angular — the widget is framework-agnostic. If you'd rather not write the glue, opening an issue describing how you want to consume it helps us decide whether to ship an official wrapper.
+The token must be verified by your backend before the protected action runs;
+see [Verify on Your Backend](#3-verify-on-your-backend). The wrapper is safe to
+import during SSR, shares one script load across component instances, rejects
+conflicting global `serverUrl` values, and destroys its widget on unmount.
+
+The widget remains framework-agnostic, so the global API works with Vue,
+Svelte, Solid, Angular, or plain JavaScript as well.
 
 ### 3. Verify on Your Backend
 
@@ -805,6 +765,13 @@ when the policy below is configured to block. They do not change either score,
 `wouldBlock`, token issuance, or challenge costs. Missing or unsupported probes
 report `unknown`; a detection is not proof of automation. Do not use these
 observations for access decisions.
+
+`identity-coherence-v1` compares the browser and OS claimed by the User-Agent
+with independently measured WebGL backend, font-set, JavaScript error, math,
+and engine-probe evidence. An engine family is reported only when at least two
+measurements agree; missing, unfamiliar, or conflicting measurements remain
+`unknown`. All browsers on iOS are treated as WebKit, including Chrome and
+Firefox. This observation never changes the production score.
 
 Experimental checks **default to monitoring only** (`experimental.mode: "observe"`).
 To opt into blocking, set

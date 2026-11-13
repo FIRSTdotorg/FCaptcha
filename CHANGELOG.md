@@ -13,6 +13,82 @@ the project uses [Semantic Versioning](https://semver.org/) — with the caveat
 that pre-2.0 it has used minor bumps for behaviour changes that a stricter
 reading would call major. Read the **Breaking** entries rather than the number.
 
+## [1.50.0] — 2026-11-11
+
+### Detection
+- Extend the monitoring-only `identity-coherence-v1` observation with a
+  JavaScript-engine axis. It compares the engine family implied by the
+  User-Agent with bounded error-message, math, and feature-probe measurements
+  across the Go, Node.js, and Python servers.
+- Require at least two independent measurements to agree before reporting
+  Blink, Gecko, or WebKit. Missing, unfamiliar, and conflicting evidence stays
+  `unknown`; Chrome, Firefox, and Edge on iOS are correctly treated as WebKit,
+  including desktop-mode iPad User-Agents.
+
+### Tests
+- Add shared measured and synthetic identity fixtures for stock Chrome,
+  Firefox, Safari, iOS browsers, deliberate contradictions, and conflicting
+  measurements. The 507-sample regression gate remains at 0/252 human samples
+  flagged.
+
+This observation remains monitoring-only. No production score,
+recommendation, token issuance, proof-of-work, rate-limit, or blocking-policy
+behavior changes.
+
+## [1.49.0] — 2026-11-11
+
+### Added
+- An official `@webdecoy/fcaptcha-react` package provides an SSR-safe React
+  18/19 component for the interactive widget. It deduplicates resolved script
+  URLs, destroys widgets on unmount, keeps callbacks current without rerendering
+  the widget, retries failed script loads, and rejects conflicting global
+  verifier configuration.
+- The wrapper ships TypeScript declarations, backend-verification guidance, and
+  lifecycle coverage for StrictMode, simultaneous instances, early unmount,
+  retries, callback changes, and server-side imports.
+
+### Packaging
+- GitHub releases now publish the React wrapper alongside the Node server and
+  browser client, with the same release version across all three npm packages.
+
+No scoring, server API, or detector behavior changes.
+
+## [1.48.2] — 2026-11-11
+
+### Security
+- Go source builds and CI move to Go 1.26.11 / 1.27.4, which fix GO-2026-6859
+  in the standard library's HTTP/1 server. The minimum supported Go patch
+  version is now 1.26.11, and published Go images build from 1.27.4.
+
+### Measurement
+- A paired-observation analyzer compares browser-internal captures with their
+  same-mode human controls, screens candidates against every captured human,
+  and requires consistent direction plus leave-one-pair-out detection before
+  marking a signal for promotion review. Operational identifiers, derived
+  variants, and self-reported samples cannot become candidates.
+
+No API changes.
+
+## [1.48.1] — 2026-11-10
+
+### Fixed
+- Precise clicks are no longer scored as automation on their own. A paired real
+  trackpad control landed 1.62px from target center, inside the former threshold,
+  proving the standalone signal could flag normal human input. Node, Go, and
+  Python now apply the same corrected behavior.
+- Benchmark replays retain the reviewed capture endpoint, including through
+  derived variants, so invisible `/api/score` sessions are no longer replayed as
+  widget `/api/verify` sessions with fabricated missing-click detections.
+
+### Measurement
+- The browser-internal corpus now contains five Chrome Auto Browse widget pairs
+  and five invisible pairs: 20 captured samples total. Every capture produced a
+  valid token and an allow verdict. Agent scores overlap their same-browser,
+  same-profile human controls, so no browser-internal enforcement rule or score
+  floor is introduced.
+
+No API changes.
+
 ## [1.48.0] — 2026-11-09
 
 ### Security

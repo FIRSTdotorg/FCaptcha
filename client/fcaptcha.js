@@ -14,7 +14,7 @@
     // Keep in sync with server-node/package.json when cutting a release; this
     // string ships to integrators. server-node/version.test.js enforces it
     // across every file that carries the version, and lists them.
-    version: '1.48.0',
+    version: '1.50.0',
     widgets: new Map(),
     serverUrl: '',
     // Site-wide language default. Per-widget `lang` still wins; leaving both
@@ -1470,6 +1470,7 @@
         // Advanced fingerprint detections
         mathFingerprint: this._getMathFingerprint(),
         errorFingerprint: this._getErrorFingerprint(),
+        engineProbes: this._getEngineProbes(),
         domRectFingerprint: this._getDOMRectFingerprint(),
         cssMediaQueries: this._getCSSMediaQueries(),
         permissionsInfo: this._getPermissionsInfo(),
@@ -2049,6 +2050,26 @@
         return {
           hash: hash.toString(16),
           typeError: errors.typeError,
+          supported: true
+        };
+      } catch (e) {
+        return { supported: false, error: true };
+      }
+    }
+
+    /**
+     * Cheap, bounded engine probes for the observe-only identity-coherence
+     * measurement. No single boolean identifies an engine reliably, so the
+     * servers require these to agree with the independent error/math
+     * fingerprints before reporting a JavaScript-engine family.
+     */
+    _getEngineProbes() {
+      try {
+        const supports = typeof CSS !== 'undefined' && typeof CSS.supports === 'function';
+        return {
+          errorCaptureStackTrace: typeof Error.captureStackTrace === 'function',
+          mozAppearance: supports && CSS.supports('(-moz-appearance: none)'),
+          webkitTouchCallout: supports && CSS.supports('(-webkit-touch-callout: none)'),
           supported: true
         };
       } catch (e) {
